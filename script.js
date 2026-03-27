@@ -54,7 +54,9 @@ let state = {
         junior: { count: 0, baseCost: 100, costMultiplier: 1.15, baseProduction: 5 },
         senior: { count: 0, baseCost: 1100, costMultiplier: 1.15, baseProduction: 50 },
         ai: { count: 0, baseCost: 12000, costMultiplier: 1.15, baseProduction: 400 },
-        datacenter: { count: 0, baseCost: 130000, costMultiplier: 1.15, baseProduction: 2500 }
+        datacenter: { count: 0, baseCost: 130000, costMultiplier: 1.15, baseProduction: 2500 },
+        quantum: { count: 0, baseCost: 1500000000, costMultiplier: 1.15, baseProduction: 18000 },
+        vcfirm: { count: 0, baseCost: 45000000000, costMultiplier: 1.15, baseProduction: 120000 }
     }
 };
 
@@ -63,7 +65,9 @@ const upgradesInfo = {
     junior: { name: "Junior Dev", desc: "Copy-pastes from StackOverflow.", icon: "fas fa-user-tie" },
     senior: { name: "Senior Dev", desc: "Actually understands the architecture.", icon: "fas fa-laptop-code" },
     ai: { name: "AI Assistant", desc: "Writes code faster than humans.", icon: "fas fa-robot" },
-    datacenter: { name: "Data Center", desc: "Compiles code instantly.", icon: "fas fa-server" }
+    datacenter: { name: "Data Center", desc: "Compiles code instantly.", icon: "fas fa-server" },
+    quantum: { name: "Quantum Computer", desc: "Calculates every possible bug instantly.", icon: "fas fa-microchip" },
+    vcfirm: { name: "VC Firm", desc: "Acquires smaller startups for automated code injection.", icon: "fas fa-building" }
 };
 
 const achievementsData = [
@@ -76,6 +80,8 @@ const achievementsData = [
     { id: 'junior_25', name: "StackOverflow DDoS", desc: "Hire 25 Junior Devs.", threshold: 25, type: 'building', target: 'junior' },
     { id: 'senior_10', name: "Brain Trust", desc: "Hire 10 Senior Devs.", threshold: 10, type: 'building', target: 'senior' },
     { id: 'datacenter', name: "Cloud Native", desc: "Deploy your first Data Center.", threshold: 1, type: 'building', target: 'datacenter' },
+    { id: 'quantum', name: "Superposition", desc: "Deploy your first Quantum Computer.", threshold: 1, type: 'building', target: 'quantum' },
+    { id: 'vcfirm', name: "Unicorn Status", desc: "Found a VC Firm.", threshold: 1, type: 'building', target: 'vcfirm' },
     { id: 'ipo_1', name: "Early Exit", desc: "Launch an IPO and prestige.", threshold: 1, type: 'prestige' },
     { id: 'ipo_100', name: "Serial Entrepreneur", desc: "Acquire 100 Stock Options.", threshold: 100, type: 'prestige' }
 ];
@@ -121,8 +127,40 @@ function init() {
 }
 
 // ==========================================
-// CORE MECHANICS
+// CORE MECHANICS & AUDIO
 // ==========================================
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+const audioCtx = new AudioContext();
+function playSound(type) {
+    if(!audioCtx) return;
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    osc.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    if (type === 'click') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
+        gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
+    } else if (type === 'buy') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(600, audioCtx.currentTime + 0.1);
+        gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+    } else if (type === 'error') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(100, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(80, audioCtx.currentTime + 0.3);
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+    }
+}
 function getClickPower() {
     let baseClick = 1 + (getCPS() * 0.05); 
     for (const key in state.clickUpgrades) {
@@ -136,6 +174,7 @@ function getClickPower() {
 
 mainButton.addEventListener('pointerdown', (e) => {
     e.preventDefault(); 
+    playSound('click');
     let clickPower = getClickPower();
     state.code += clickPower;
     state.runCode = (state.runCode || 0) + clickPower;
@@ -178,6 +217,7 @@ function getCPS() {
 window.buyUpgrade = function(upgradeId) {
     const cost = getCost(upgradeId);
     if (state.code >= cost) {
+        playSound('buy');
         state.code -= cost;
         state.upgrades[upgradeId].count++;
         updateDisplay();
@@ -188,6 +228,7 @@ window.buyUpgrade = function(upgradeId) {
 window.buyClickUpgrade = function(upgradeId) {
     const upgrade = state.clickUpgrades[upgradeId];
     if (!upgrade.purchased && state.code >= upgrade.cost) {
+        playSound('buy');
         state.code -= upgrade.cost;
         upgrade.purchased = true;
         updateDisplay();
@@ -621,6 +662,11 @@ btnLeaderboard.addEventListener('click', async () => {
                     </div>
                     ${ranksHtml || '<p style="text-align:center;color:#8b949e;">Empty.</p>'}
                 </div>
+                <div style="margin-top: 15px;">
+                    <button onclick="shareScore()" style="width:100%; background:#1da1f2; color:white; border:none; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer;">
+                        <i class="fab fa-twitter"></i> Share High Score
+                    </button>
+                </div>
             </div>
         `);
     } catch (e) {
@@ -667,5 +713,12 @@ rewardedBtn.addEventListener('click', () => {
         saveGame();
     }
 });
+
+window.shareScore = function() {
+    const text = `🚀 I just launched my startup "${state.companyName}" with ${formatNumber(state.stockOptions || 0)} Stock Options! Can you beat my high score? Play here: https://idlestartupclicker.online`;
+    navigator.clipboard.writeText(text).then(() => {
+        showToast("Copied to Clipboard!", "Paste it on Twitter or Reddit!", "fas fa-check");
+    });
+}
 
 init();
