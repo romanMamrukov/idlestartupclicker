@@ -140,21 +140,53 @@ function createNoiseBuffer() {
     for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
     return buffer;
 }
+let isAmbientLoopRunning = false;
+function manageAmbientAudio() {
+    if(!audioCtx || audioCtx.state !== 'running') return;
+    
+    let totalEmployees = 0;
+    for (const key in state.upgrades) {
+        if(key !== 'datacenter' && key !== 'quantum' && key !== 'vcfirm') {
+            totalEmployees += state.upgrades[key].count;
+        }
+    }
+    
+    if (totalEmployees === 0) {
+        setTimeout(manageAmbientAudio, 1000);
+        return;
+    }
+    
+    let interval = Math.max(30, 1500 - (totalEmployees * 15));
+    const isMech = state.clickUpgrades && state.clickUpgrades.mechKeyboard && state.clickUpgrades.mechKeyboard.purchased;
+    
+    playSound(isMech ? 'ambient_mech' : 'ambient_click');
+    
+    let jitter = interval + (Math.random() * interval * 0.4 - interval * 0.2);
+    setTimeout(manageAmbientAudio, jitter);
+}
+
 function playSound(type) {
     if(!audioCtx) return;
     if(audioCtx.state === 'suspended') audioCtx.resume();
+    if(!isAmbientLoopRunning && audioCtx.state === 'running' && !type.includes('ambient')) {
+        isAmbientLoopRunning = true;
+        manageAmbientAudio();
+    }
+
     const gainNode = audioCtx.createGain();
     gainNode.connect(audioCtx.destination);
 
-    if (type === 'click' || type === 'mech') {
+    if (type.includes('click') || type.includes('mech')) {
         if (!noiseBuffer) noiseBuffer = createNoiseBuffer();
         const noiseSource = audioCtx.createBufferSource();
         noiseSource.buffer = noiseBuffer;
         const filter = audioCtx.createBiquadFilter();
         
-        if (type === 'mech') {
+        const volMult = type.includes('ambient') ? 0.15 : 1.0;
+        
+        if (type.includes('mech')) {
             filter.type = 'lowpass'; filter.frequency.value = 1000;
-            gainNode.gain.setValueAtTime(0.6, audioCtx.currentTime);
+            gainNode.gain.setValueAtTime(0.6 * volMult, audioCtx.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
             noiseSource.connect(filter); filter.connect(gainNode);
             noiseSource.start(); noiseSource.stop(audioCtx.currentTime + 0.1);
@@ -163,25 +195,25 @@ function playSound(type) {
             osc.frequency.setValueAtTime(120, audioCtx.currentTime);
             osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.05);
             const oscGain = audioCtx.createGain();
-            oscGain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+            oscGain.gain.setValueAtTime(0.4 * volMult, audioCtx.currentTime);
             oscGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
             osc.connect(oscGain); oscGain.connect(audioCtx.destination);
             osc.start(); osc.stop(audioCtx.currentTime + 0.05);
         } else {
-            filter.type = 'bandpass'; filter.frequency.value = 3000;
-            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+            filter.type = 'highpass'; filter.frequency.value = 1500;
+            gainNode.gain.setValueAtTime(0.3 * volMult, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.06);
             noiseSource.connect(filter); filter.connect(gainNode);
-            noiseSource.start(); noiseSource.stop(audioCtx.currentTime + 0.05);
+            noiseSource.start(); noiseSource.stop(audioCtx.currentTime + 0.06);
             
             const osc = audioCtx.createOscillator(); osc.type = 'square';
-            osc.frequency.setValueAtTime(4000, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(2000, audioCtx.currentTime + 0.03);
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.03);
             const oscGain = audioCtx.createGain();
-            oscGain.gain.setValueAtTime(0.05, audioCtx.currentTime);
-            oscGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.03);
+            oscGain.gain.setValueAtTime(0.05 * volMult, audioCtx.currentTime);
+            oscGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.04);
             osc.connect(oscGain); oscGain.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + 0.03);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.04);
         }
         return;
     }
@@ -208,11 +240,26 @@ function playSound(type) {
         osc.start(); osc.stop(audioCtx.currentTime + 0.8);
     } else if (type === 'error' || type === 'event_missed') {
         osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(100, audioCtx.currentTime);
-        osc.frequency.linearRampToValueAtTime(80, audioCtx.currentTime + 0.3);
-        gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-        osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(50, audioCtx.currentTime + 0.4);
+        gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+        
+        let delTime = audioCtx.currentTime;
+        for(let i=0; i<5; i++) {
+            if (!noiseBuffer) noiseBuffer = createNoiseBuffer();
+            const nSrc = audioCtx.createBufferSource();
+            nSrc.buffer = noiseBuffer;
+            const f = audioCtx.createBiquadFilter();
+            f.type = 'highpass'; f.frequency.value = 2000;
+            const g = audioCtx.createGain();
+            g.gain.setValueAtTime(0.3, delTime);
+            g.gain.exponentialRampToValueAtTime(0.01, delTime + 0.05);
+            nSrc.connect(f); f.connect(g); g.connect(audioCtx.destination);
+            nSrc.start(delTime); nSrc.stop(delTime + 0.05);
+            delTime += 0.08;
+        }
     } else if (type === 'event_spawn') {
         osc.type = 'sine';
         osc.frequency.setValueAtTime(880, audioCtx.currentTime);
