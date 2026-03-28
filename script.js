@@ -131,34 +131,102 @@ function init() {
 // ==========================================
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 const audioCtx = new AudioContext();
+let noiseBuffer = null;
+function createNoiseBuffer() {
+    if (!audioCtx) return null;
+    const bufferSize = audioCtx.sampleRate * 2;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    return buffer;
+}
 function playSound(type) {
     if(!audioCtx) return;
     if(audioCtx.state === 'suspended') audioCtx.resume();
-    const osc = audioCtx.createOscillator();
     const gainNode = audioCtx.createGain();
-    osc.connect(gainNode);
     gainNode.connect(audioCtx.destination);
-    if (type === 'click') {
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
-        gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-        osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-    } else if (type === 'buy') {
+
+    if (type === 'click' || type === 'mech') {
+        if (!noiseBuffer) noiseBuffer = createNoiseBuffer();
+        const noiseSource = audioCtx.createBufferSource();
+        noiseSource.buffer = noiseBuffer;
+        const filter = audioCtx.createBiquadFilter();
+        
+        if (type === 'mech') {
+            filter.type = 'lowpass'; filter.frequency.value = 1000;
+            gainNode.gain.setValueAtTime(0.6, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+            noiseSource.connect(filter); filter.connect(gainNode);
+            noiseSource.start(); noiseSource.stop(audioCtx.currentTime + 0.1);
+            
+            const osc = audioCtx.createOscillator(); osc.type = 'sine';
+            osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.05);
+            const oscGain = audioCtx.createGain();
+            oscGain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+            oscGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+            osc.connect(oscGain); oscGain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.05);
+        } else {
+            filter.type = 'bandpass'; filter.frequency.value = 3000;
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+            noiseSource.connect(filter); filter.connect(gainNode);
+            noiseSource.start(); noiseSource.stop(audioCtx.currentTime + 0.05);
+            
+            const osc = audioCtx.createOscillator(); osc.type = 'square';
+            osc.frequency.setValueAtTime(4000, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(2000, audioCtx.currentTime + 0.03);
+            const oscGain = audioCtx.createGain();
+            oscGain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            oscGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.03);
+            osc.connect(oscGain); oscGain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.03);
+        }
+        return;
+    }
+    
+    const osc = audioCtx.createOscillator();
+    osc.connect(gainNode);
+    if (type === 'buy') {
         osc.type = 'sine';
         osc.frequency.setValueAtTime(400, audioCtx.currentTime);
         osc.frequency.linearRampToValueAtTime(600, audioCtx.currentTime + 0.1);
         gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
         gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
         osc.start(); osc.stop(audioCtx.currentTime + 0.2);
-    } else if (type === 'error') {
+    } else if (type === 'achievement') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime);
+        osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1);
+        osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2);
+        osc.frequency.setValueAtTime(1046.50, audioCtx.currentTime + 0.3);
+        gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.05, audioCtx.currentTime + 0.05);
+        gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime + 0.3);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.8);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.8);
+    } else if (type === 'error' || type === 'event_missed') {
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(100, audioCtx.currentTime);
         osc.frequency.linearRampToValueAtTime(80, audioCtx.currentTime + 0.3);
-        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
         gainNode.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
         osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+    } else if (type === 'event_spawn') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.3);
+        gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+    } else if (type === 'event_caught') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(1760, audioCtx.currentTime + 0.2);
+        gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.4);
     }
 }
 function getClickPower() {
@@ -174,7 +242,11 @@ function getClickPower() {
 
 mainButton.addEventListener('pointerdown', (e) => {
     e.preventDefault(); 
-    playSound('click');
+    if (state.clickUpgrades && state.clickUpgrades.mechKeyboard && state.clickUpgrades.mechKeyboard.purchased) {
+        playSound('mech');
+    } else {
+        playSound('click');
+    }
     let clickPower = getClickPower();
     state.code += clickPower;
     state.runCode = (state.runCode || 0) + clickPower;
@@ -240,6 +312,7 @@ window.buyClickUpgrade = function(upgradeId) {
 // RANDOM EVENT
 // ==========================================
 function spawnEvent() {
+    playSound('event_spawn');
     const isBad = Math.random() > 0.6; // 40% chance of a BAD event
     const bug = document.createElement('div');
     bug.className = 'golden-bug';
@@ -270,6 +343,7 @@ function spawnEvent() {
             
             // PENALTY IF MISSED
             if (isBad && missed) {
+                playSound('event_missed');
                 const penalty = Math.min((state.code / 2), Math.max(10, getCPS() * 60));
                 if (penalty > 0) {
                     state.code -= penalty;
@@ -284,6 +358,7 @@ function spawnEvent() {
         e.stopPropagation();
         e.preventDefault();
         missed = false; // Successfully caught
+        playSound('event_caught');
         
         if (isBad) {
             showToast("Crisis Averted!", "You successfully rebooted the failing server.", "fas fa-shield-alt");
@@ -352,6 +427,7 @@ function checkAchievements() {
             if (ach.type === 'building' && state.upgrades[ach.target].count >= ach.threshold) unlocked = true;
             if (ach.type === 'prestige' && (state.stockOptions || 0) >= ach.threshold) unlocked = true;
             if (unlocked) {
+                playSound('achievement');
                 state.unlockedAchievements.push(ach.id);
                 showToast("Achievement Unlocked!", ach.name);
                 newlyUnlocked = true;
