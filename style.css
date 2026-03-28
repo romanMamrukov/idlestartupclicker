@@ -119,8 +119,8 @@ body {
   background: linear-gradient(135deg, #1f242c, #161b22);
   border: 2px solid var(--border-color);
   border-radius: 50%;
-  width: 250px;
-  height: 250px;
+  width: 180px;
+  height: 180px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -139,7 +139,7 @@ body {
 }
 
 .main-button i {
-  font-size: 90px;
+  font-size: 65px;
   color: #fff;
   text-shadow: 0 0 20px var(--accent-color);
   pointer-events: none;
