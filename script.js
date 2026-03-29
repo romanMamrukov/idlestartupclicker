@@ -373,7 +373,8 @@ function spawnEvent() {
         bug.style.color = "gold";
     }
 
-    bug.style.top = Math.random() * 60 + 15 + '%';
+    // Keep bugs in upper/middle area to avoid hiding behind ads and controls
+    bug.style.top = Math.random() * 40 + 20 + '%';
     bug.style.left = '-100px';
     document.body.appendChild(bug);
 

@@ -25,42 +25,46 @@
 
 <div class="app-container" style="justify-content:center;">
     <!-- Clicker Main Display (Full Screen Centered) -->
-    <main class="clicker-section" id="click-area" style="flex:1; max-width:600px; border-right:none; display:flex; flex-direction:column; justify-content:flex-start; padding:1rem;">
+    <main class="clicker-section" id="click-area" style="flex:1; max-width:500px; border-right:none; display:flex; flex-direction:column; justify-content:space-between; padding:1rem 1rem 0.5rem 1rem;">
         
-        <div class="stats-container" style="margin-bottom:10px;">
-            <h1 class="code-count" id="code-count" style="font-size:clamp(2.5rem, 8vw, 4.5rem); letter-spacing:-1px; margin:0;">0</h1>
-            <div class="cps-count"><span id="cps-count" style="font-size:1rem;">0 lines / second</span></div>
-        </div>
-        
-        <div class="main-button-container" style="margin-bottom:10px;">
-            <div class="main-button" id="main-button">
-                <i class="fas fa-laptop-code"></i>
+        <div class="top-content" style="flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+            <div class="stats-container" style="margin-bottom:10px;">
+                <h1 class="code-count" id="code-count" style="font-size:clamp(2.5rem, 8vw, 4.5rem); letter-spacing:-1px; margin:0;">0</h1>
+                <div class="cps-count"><span id="cps-count" style="font-size:1rem;">0 lines / second</span></div>
             </div>
-        </div>
-        
-        <div id="mini-map" class="mini-map-container" style="margin-bottom:20px;"></div>
-
-        <div style="display:flex; flex-direction:column; gap:8px;">
-            <button id="btn-store" style="width:100%; background:var(--accent-color); color:white; border:none; border-radius:12px; padding:15px; font-size:1.1rem; font-weight:bold; cursor:pointer; box-shadow:0 10px 20px rgba(0,0,0,0.3); transition:transform 0.1s;">
-                <i class="fas fa-shopping-cart"></i> Recruit & Upgrades
-            </button>
-            <button id="rewarded-ad-btn" class="rewarded-ad-btn" style="width:100%; margin:0; padding:15px; font-size:1rem; border-radius:12px;">
-                <i class="fas fa-video"></i> Watch Ad for 2x Boost!
-            </button>
-            <div class="ad-active-tag" id="ad-active-tag" style="margin-top:10px;"></div>
+            
+            <div class="main-button-container" style="margin-bottom:10px;">
+                <div class="main-button" id="main-button">
+                    <i class="fas fa-laptop-code"></i>
+                </div>
+            </div>
+            
+            <div id="mini-map" class="mini-map-container" style="margin-bottom:10px;"></div>
         </div>
 
-        <!-- Live AdSense Placement -->
-        <div class="ad-banner" style="margin-top:15px; min-height:90px; display:flex; justify-content:center;">
-            <ins class="adsbygoogle"
-                 style="display:block; width:100%;"
-                 data-ad-client="ca-pub-1398972486404954"
-                 data-ad-slot=""
-                 data-ad-format="auto"
-                 data-full-width-responsive="true"></ins>
-            <script>
-                 (adsbygoogle = window.adsbygoogle || []).push({});
-            </script>
+        <div class="bottom-controls" style="width:100%; flex-shrink:0;">
+            <div style="display:flex; flex-direction:column; gap:8px;">
+                <button id="btn-store" style="width:100%; background:var(--accent-color); color:white; border:none; border-radius:12px; padding:12px; font-size:1.1rem; font-weight:bold; cursor:pointer; box-shadow:0 8px 15px rgba(0,0,0,0.3); transition:transform 0.1s;">
+                    <i class="fas fa-shopping-cart"></i> Recruit & Upgrades
+                </button>
+                <button id="rewarded-ad-btn" class="rewarded-ad-btn" style="width:100%; margin:0; padding:12px; font-size:1rem; border-radius:12px;">
+                    <i class="fas fa-video"></i> Watch Ad for 2x Boost!
+                </button>
+                <div class="ad-active-tag" id="ad-active-tag" style="margin-top:5px;"></div>
+            </div>
+
+            <!-- Live AdSense Placement -->
+            <div class="ad-banner" style="margin-top:10px; min-height:90px; width:100%; display:block;">
+                <ins class="adsbygoogle"
+                     style="display:block; width:100%;"
+                     data-ad-client="ca-pub-1398972486404954"
+                     data-ad-slot=""
+                     data-ad-format="auto"
+                     data-full-width-responsive="true"></ins>
+                <script>
+                     (adsbygoogle = window.adsbygoogle || []).push({});
+                </script>
+            </div>
         </div>
     </main>
 </div>
