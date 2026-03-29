@@ -41,6 +41,7 @@ let state = {
     runCode: 0, 
     stockOptions: 0, 
     unlockedAchievements: [], 
+    tutorialComplete: false,
     lastSaveTime: Date.now(),
     adMultiplier: 1, 
     adMultiplierEndTime: 0,
@@ -580,6 +581,69 @@ function updateDisplay() {
     updateMiniMap();
     updateStoreOpacities();
     checkAchievements();
+    if(!state.tutorialComplete) renderTutorial();
+}
+
+let currentTutorialStep = 0;
+function renderTutorial() {
+    if (state.tutorialComplete) return;
+
+    let tutEl = document.getElementById('tutorial-pointer');
+    if (!tutEl) {
+        tutEl = document.createElement('div');
+        tutEl.id = 'tutorial-pointer';
+        document.body.appendChild(tutEl);
+        
+        const style = document.createElement('style');
+        style.innerHTML = `
+            #tutorial-pointer {
+                position: fixed;
+                background: #58a6ff;
+                color: #fff;
+                padding: 15px 20px;
+                border-radius: 8px;
+                font-weight: bold;
+                font-size: 1.1rem;
+                z-index: 9999;
+                pointer-events: none;
+                box-shadow: 0 0 20px rgba(88, 166, 255, 0.8);
+                animation: bounce 1s infinite alternate;
+                display: none;
+                text-align: center;
+                white-space: nowrap;
+            }
+            @keyframes bounce { 
+                0% { margin-top: 0px; } 
+                100% { margin-top: -15px; } 
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    if (state.totalClicks < 15) {
+        currentTutorialStep = 1;
+        const rect = document.getElementById('main-button').getBoundingClientRect();
+        tutEl.style.display = 'block';
+        tutEl.style.top = (rect.top - 60) + 'px';
+        tutEl.style.left = (rect.left + rect.width / 2 - 150) + 'px';
+        tutEl.innerHTML = `Step 1: Click to write 15 lines of code! (${state.totalClicks}/15)`;
+    } else if (state.totalClicks >= 15 && state.upgrades.intern.count === 0) {
+        currentTutorialStep = 2;
+        const rect = document.getElementById('btn-store').getBoundingClientRect();
+        tutEl.style.display = 'block';
+        tutEl.style.left = (rect.left + rect.width / 2 - 160) + 'px';
+        tutEl.style.top = (rect.top - 60) + 'px';
+        tutEl.innerHTML = `Step 2: Open Store & hire an Intern!`;
+    } else if (state.upgrades.intern.count > 0 && currentTutorialStep <= 2) {
+        currentTutorialStep = 3;
+        state.tutorialComplete = true;
+        tutEl.style.display = 'block';
+        tutEl.style.top = '100px';
+        tutEl.style.left = '50%';
+        tutEl.style.transform = 'translateX(-50%)';
+        tutEl.innerHTML = `<i class="fas fa-check-circle"></i> Tutorial Complete! Watch for flying server bugs!`;
+        setTimeout(() => { if(tutEl) tutEl.remove(); saveGame(); }, 6000);
+    }
 }
 
 function updateStoreOpacities() {
@@ -691,12 +755,20 @@ btnStore.addEventListener('click', () => {
 btnSettings.addEventListener('click', () => {
     let html = `
         <div style="display:flex; flex-direction:column; gap: 15px;">
-            <p style="color:var(--text-muted); font-size:0.95rem;">Manage your game configuration and save files natively.</p>
+            <p style="color:var(--text-muted); font-size:0.95rem;">Manage your game configuration and save files.</p>
             <div style="display:flex; gap: 10px;">
                 <button onclick="exportSaveUI()" class="header-btn" style="flex:1; background:#238636; border:none; color:white; padding:12px; font-weight:bold;"><i class="fas fa-download"></i> Save to File</button>
                 <button onclick="importSaveUI()" class="header-btn" style="flex:1; background:#1f6feb; border:none; color:white; padding:12px; font-weight:bold;"><i class="fas fa-upload"></i> Load File</button>
             </div>
-            <p id="save-msg" style="color:var(--success-color); font-size:0.9rem; text-align:center; height:15px; margin:0;"></p>
+            
+            <hr style="border-color:var(--border-color); margin: 5px 0;">
+            <p style="color:#fff; font-weight:bold; margin-bottom:0;"><i class="fas fa-cloud"></i> Cloud Sync</p>
+            <div style="display:flex; gap: 10px;">
+                <button onclick="uploadCloudSave()" class="header-btn" style="flex:1; background:#8a2be2; border:none; color:white; padding:12px;"><i class="fas fa-cloud-upload-alt"></i> Upload Cloud Save</button>
+                <button onclick="downloadCloudSavePrompt()" class="header-btn" style="flex:1; background:#58a6ff; border:none; color:white; padding:12px;"><i class="fas fa-cloud-download-alt"></i> Import Code</button>
+            </div>
+            <p id="save-msg" style="color:var(--success-color); font-size:0.9rem; text-align:center; min-height:15px; margin:0;"></p>
+
             <hr style="border-color:var(--border-color); margin: 5px 0;">
             <button onclick="hardReset()" class="rewarded-ad-btn" style="background:#da3633; border:none; padding:12px; font-size:1rem;"><i class="fas fa-skull"></i> Hard Reset (Wipe All)</button>
         </div>
@@ -738,6 +810,54 @@ window.handleFileImport = function(event) {
         }
     };
     reader.readAsText(file);
+}
+
+window.uploadCloudSave = async function() {
+    saveGame();
+    const pin = Math.random().toString(36).substring(2, 6).toUpperCase() + Math.random().toString(36).substring(2, 5).toUpperCase(); // 7 chars
+    const saveObj = JSON.parse(localStorage.getItem('startupClickerSave'));
+    const msgEl = document.getElementById('save-msg');
+    
+    msgEl.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Uploading...`;
+    msgEl.style.color = "var(--success-color)";
+    
+    try {
+        const { error } = await supabaseClient.from('cloud_saves').upsert(
+            { sync_id: pin, save_data: saveObj }, 
+            { onConflict: 'sync_id' }
+        );
+        if (error) throw error;
+        msgEl.innerHTML = `Success! Your Sync Code: <strong style="color:gold; font-size:1.1rem; letter-spacing:1px;">${pin}</strong>`;
+    } catch(err) {
+        msgEl.innerHTML = `Error: Make sure 'cloud_saves' table exists in Supabase.`;
+        msgEl.style.color = "#da3633";
+        console.error(err);
+    }
+}
+
+window.downloadCloudSavePrompt = function() {
+    const pin = prompt("Enter your Cloud Sync Code:");
+    if (!pin) return;
+    downloadCloudSave(pin.trim().toUpperCase());
+}
+
+window.downloadCloudSave = async function(pin) {
+    const msgEl = document.getElementById('save-msg');
+    if(!msgEl) return;
+    msgEl.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Downloading...`;
+    msgEl.style.color = "var(--success-color)";
+    
+    try {
+        const { data, error } = await supabaseClient.from('cloud_saves').select('save_data').eq('sync_id', pin).single();
+        if (error || !data) throw error || new Error("Save not found");
+        
+        localStorage.setItem('startupClickerSave', JSON.stringify(data.save_data));
+        msgEl.innerText = "Cloud Save loaded! Reloading...";
+        setTimeout(() => location.reload(), 1000);
+    } catch(err) {
+        msgEl.innerText = "Error: Invalid PIN or save not found.";
+        msgEl.style.color = "#da3633";
+    }
 }
 
 window.hardReset = function() {
@@ -829,12 +949,34 @@ function renderTrophies() {
 // MONETIZATION HOOKS
 // ==========================================
 rewardedBtn.addEventListener('click', () => {
-    const adsSDK = confirm("MOCK AD SDK: Watch this 30s ad to DOUBLE your production for 10 minutes?");
-    if (adsSDK) {
-        state.adMultiplierEndTime = Date.now() + (10 * 60 * 1000);
-        state.adMultiplier = 2;
-        updateDisplay();
-        saveGame();
+    if (window.CrazyGames && window.CrazyGames.SDK) {
+        const callbacks = {
+            adFinished: () => {
+                if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+                state.adMultiplierEndTime = Date.now() + (10 * 60 * 1000);
+                state.adMultiplier = 2;
+                updateDisplay();
+                saveGame();
+                showToast("Boost Activated!", "Production DOUBLED for 10 minutes!", "fas fa-fire");
+            },
+            adError: (error) => {
+                if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+                showToast("Ad Failed", "Could not load video. Try again later.", "fas fa-exclamation-triangle");
+            },
+            adStarted: () => {
+                if(audioCtx && audioCtx.state === 'running') audioCtx.suspend();
+            }
+        };
+        window.CrazyGames.SDK.ad.requestAd('rewarded', callbacks);
+    } else {
+        const adsSDK = confirm("MOCK SDK (CrazyGames not loaded locally): Watch this ad to DOUBLE your production?");
+        if (adsSDK) {
+            state.adMultiplierEndTime = Date.now() + (10 * 60 * 1000);
+            state.adMultiplier = 2;
+            updateDisplay();
+            saveGame();
+            showToast("Boost Activated!", "Production DOUBLED for 10 minutes!", "fas fa-fire");
+        }
     }
 });
 
