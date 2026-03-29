@@ -611,6 +611,17 @@ function renderTutorial() {
                 display: none;
                 text-align: center;
                 white-space: nowrap;
+                transform: translateX(-50%);
+            }
+            #tutorial-pointer::after {
+                content: '';
+                position: absolute;
+                bottom: -10px;
+                left: 50%;
+                transform: translateX(-50%);
+                border-width: 10px 10px 0;
+                border-style: solid;
+                border-color: #58a6ff transparent transparent transparent;
             }
             @keyframes bounce { 
                 0% { margin-top: 0px; } 
@@ -624,15 +635,15 @@ function renderTutorial() {
         currentTutorialStep = 1;
         const rect = document.getElementById('main-button').getBoundingClientRect();
         tutEl.style.display = 'block';
-        tutEl.style.top = (rect.top - 60) + 'px';
-        tutEl.style.left = (rect.left + rect.width / 2 - 150) + 'px';
+        tutEl.style.top = (rect.top - 80) + 'px';
+        tutEl.style.left = (rect.left + rect.width / 2) + 'px';
         tutEl.innerHTML = `Step 1: Click to write 15 lines of code! (${state.totalClicks}/15)`;
     } else if (state.totalClicks >= 15 && state.upgrades.intern.count === 0) {
         currentTutorialStep = 2;
         const rect = document.getElementById('btn-store').getBoundingClientRect();
         tutEl.style.display = 'block';
-        tutEl.style.left = (rect.left + rect.width / 2 - 160) + 'px';
-        tutEl.style.top = (rect.top - 60) + 'px';
+        tutEl.style.left = (rect.left + rect.width / 2) + 'px';
+        tutEl.style.top = (rect.top - 80) + 'px';
         tutEl.innerHTML = `Step 2: Open Store & hire an Intern!`;
     } else if (state.upgrades.intern.count > 0 && currentTutorialStep <= 2) {
         currentTutorialStep = 3;
@@ -640,7 +651,6 @@ function renderTutorial() {
         tutEl.style.display = 'block';
         tutEl.style.top = '100px';
         tutEl.style.left = '50%';
-        tutEl.style.transform = 'translateX(-50%)';
         tutEl.innerHTML = `<i class="fas fa-check-circle"></i> Tutorial Complete! Watch for flying server bugs!`;
         setTimeout(() => { if(tutEl) tutEl.remove(); saveGame(); }, 6000);
     }
@@ -949,36 +959,50 @@ function renderTrophies() {
 // MONETIZATION HOOKS
 // ==========================================
 rewardedBtn.addEventListener('click', () => {
-    if (window.CrazyGames && window.CrazyGames.SDK) {
-        const callbacks = {
-            adFinished: () => {
-                if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-                state.adMultiplierEndTime = Date.now() + (10 * 60 * 1000);
-                state.adMultiplier = 2;
-                updateDisplay();
-                saveGame();
-                showToast("Boost Activated!", "Production DOUBLED for 10 minutes!", "fas fa-fire");
-            },
-            adError: (error) => {
-                if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-                showToast("Ad Failed", "Could not load video. Try again later.", "fas fa-exclamation-triangle");
-            },
-            adStarted: () => {
-                if(audioCtx && audioCtx.state === 'running') audioCtx.suspend();
-            }
-        };
-        window.CrazyGames.SDK.ad.requestAd('rewarded', callbacks);
-    } else {
-        const adsSDK = confirm("MOCK SDK (CrazyGames not loaded locally): Watch this ad to DOUBLE your production?");
-        if (adsSDK) {
-            state.adMultiplierEndTime = Date.now() + (10 * 60 * 1000);
-            state.adMultiplier = 2;
-            updateDisplay();
-            saveGame();
-            showToast("Boost Activated!", "Production DOUBLED for 10 minutes!", "fas fa-fire");
+    try {
+        if (window.CrazyGames && window.CrazyGames.SDK) {
+            const callbacks = {
+                adFinished: () => {
+                    if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+                    state.adMultiplierEndTime = Date.now() + (10 * 60 * 1000);
+                    state.adMultiplier = 2;
+                    updateDisplay();
+                    saveGame();
+                    showToast("Boost Activated!", "Production DOUBLED for 10 minutes!", "fas fa-fire");
+                },
+                adError: (error) => {
+                    if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+                    console.warn("CrazyGames SDK Ad Blocked/Failed. Granting fallback boost.", error);
+                    state.adMultiplierEndTime = Date.now() + (10 * 60 * 1000);
+                    state.adMultiplier = 2;
+                    updateDisplay();
+                    saveGame();
+                    showToast("Test Boost Activated!", "Granted Local 2x Boost (SDK Blocked Offline)", "fas fa-vial");
+                },
+                adStarted: () => {
+                    if(audioCtx && audioCtx.state === 'running') audioCtx.suspend();
+                }
+            };
+            window.CrazyGames.SDK.ad.requestAd('rewarded', callbacks);
+        } else {
+            fallbackReward();
         }
+    } catch(err) {
+        console.warn("SDK Request Error. Falling back.", err);
+        fallbackReward();
     }
 });
+
+function fallbackReward() {
+    const adsSDK = confirm("MOCK SDK (CrazyGames missing/blocked): Watch this ad to DOUBLE your production?");
+    if (adsSDK) {
+        state.adMultiplierEndTime = Date.now() + (10 * 60 * 1000);
+        state.adMultiplier = 2;
+        updateDisplay();
+        saveGame();
+        showToast("Boost Activated!", "Production DOUBLED for 10 minutes!", "fas fa-fire");
+    }
+}
 
 window.shareScore = function() {
     const text = `🚀 I just launched my startup "${state.companyName}" with ${formatNumber(state.stockOptions || 0)} Stock Options! Can you beat my high score? Play here: https://idlestartupclicker.online`;
